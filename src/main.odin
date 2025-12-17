@@ -1,10 +1,12 @@
 package main
 
+import m "core:math"
 import rl "vendor:raylib"
 
 WINDOW_WIDTH :: 600
 WINDOW_HEIGHT :: 1000
 BG_COLOR :: rl.Color{210, 200, 190, 255}
+BLOCK_MOVE_THRESHOLD :: 12
 
 BlockDirection :: enum {
 	FORWARD,
@@ -13,7 +15,7 @@ BlockDirection :: enum {
 
 BlockAxis :: enum {
 	X_AXIS,
-	Y_AXIS,
+	Z_AXIS,
 }
 
 BlockMovement :: struct {
@@ -77,14 +79,20 @@ DrawCurrentBlock :: proc(game: Game) {
 
 CreateMovingBlock :: proc(game: Game) -> Block {
 	target: ^Block = game.previous_block
+    block_axis := target.movement.axis == BlockAxis.X_AXIS ? BlockAxis.Z_AXIS : BlockAxis.X_AXIS
+    block_direction :=  rl.GetRandomValue(0,1) == 0 ? BlockDirection.FORWARD : BlockDirection.BACKWARD
 	block_position := target.position
 	block_position.y += target.size.y
 	return {
 		block_position,
 		target.size,
 		target.color,
-		{speed = 12, direction = .FORWARD, axis = BlockAxis.X_AXIS},
+		{ 12, block_direction, block_axis },
 	}
+}
+
+PlaceCurrentBlock :: proc(game: ^Game) {
+    
 }
 
 UpdateGameState :: proc(game: ^Game) {
@@ -97,7 +105,10 @@ UpdateGameState :: proc(game: ^Game) {
 			game.current_block = CreateMovingBlock(game^)
 		}
 	case .GAME_PLAYING:
-		break
+        if input_pressed {
+             PlaceCurrentBlock(game)
+             game.current_block = CreateMovingBlock(game^)
+        }
 	case .GAME_OVER:
 		break
 	}
@@ -117,6 +128,10 @@ UpdateCurrentBlock :: proc(game: ^Game, dt: f32) {
 	direction := c_block.movement.direction == BlockDirection.FORWARD ? 1 : -1
 	axis_pos: ^f32 = c_block.movement.axis == BlockAxis.X_AXIS ? &c_block.position.x : &c_block.position.z
 	axis_pos^ += f32(direction) * c_block.movement.speed * dt
+    if m.abs(axis_pos^) >= BLOCK_MOVE_THRESHOLD {
+        c_block.movement.direction = c_block.movement.direction == BlockDirection.FORWARD ? BlockDirection.BACKWARD : BlockDirection.FORWARD
+        axis_pos^ = clamp(axis_pos^, BLOCK_MOVE_THRESHOLD, axis_pos^)
+    }
 }
 
 Update :: proc(game: ^Game, camera: ^rl.Camera3D, dt: f32) {
