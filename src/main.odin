@@ -39,6 +39,16 @@ Block :: struct {
 	movement:     BlockMovement,
 }
 
+FallingBlock :: struct {
+	position:       rl.Vector3,
+	size:           rl.Vector3,
+	rotation:       rl.Vector3,
+	rotation_speed: rl.Vector3,
+	velocty:        rl.Vector3,
+	color:          rl.Color,
+	is_active:      bool,
+}
+
 GameState :: enum {
 	GAME_READY_STATE,
 	GAME_PLAYING_STATE,
@@ -78,6 +88,7 @@ GameAnimations :: struct {
 Game :: struct {
 	state:          GameState,
 	placed_blocks:  [dynamic]Block,
+	falling_blocks: [dynamic]FallingBlock,
 	previous_block: ^Block,
 	current_block:  Block,
 	animations:     GameAnimations,
@@ -94,7 +105,7 @@ default_block: Block = {
 
 InitGame :: proc(game: ^Game) {
 	game.state = .GAME_READY_STATE
-	block: Block = default_block
+	game.falling_blocks = {}
 	game.current_block = default_block
 	game.animations = {
 		score = {duration = 0, scale = 1},
@@ -105,7 +116,7 @@ InitGame :: proc(game: ^Game) {
 			offset_y = OVERLAY_ANIMATION_OFFSET_Y,
 		},
 	}
-	append_elem(&game.placed_blocks, block)
+	append_elem(&game.placed_blocks, default_block)
 	game.previous_block = &game.placed_blocks[0]
 }
 
@@ -129,6 +140,26 @@ DrawCurrentBlock :: proc(game: Game) {
 
 CalculateBlockColor :: proc(offset: i32, phase: f32) -> u8 {
 	return u8(m.sin_f32(0.3 * f32(offset) + phase) * 55 + 200)
+}
+
+CreateFallingBlock :: proc(
+	position: rl.Vector3,
+	size: rl.Vector3,
+	color: rl.Color,
+) -> FallingBlock {
+	return {
+		position = position,
+		size = size,
+		rotation = rl.Vector3{},
+		rotation_speed = {
+			f32(rl.GetRandomValue(-300, 300)) / 100.0,
+			f32(rl.GetRandomValue(-300, 300)) / 100.0,
+			f32(rl.GetRandomValue(-300, 300)) / 100.0,
+		},
+		velocty = {0, -12, 0},
+		color = color,
+		is_active = true,
+	}
 }
 
 CreateMovingBlock :: proc(game: Game) -> Block {
@@ -198,6 +229,37 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 			current.size.z = overlap
 			current.position.z = target_position + delta / 2
 		}
+
+		block_slice_size_f := current_size - overlap
+		if block_slice_size_f > 0.1 {
+			block_slice_position := current.position
+			block_slice_size := current.size
+
+			if is_x_axis {
+				block_slice_size.x = block_slice_size_f
+				if (delta > 0) {
+					block_slice_position.x =
+						current_position + (current_size * 0.5) - block_slice_size_f * 0.5
+				} else {
+					block_slice_position.x =
+						current_position - (current_size * 0.5) + block_slice_size_f * 0.5
+				}
+			} else {
+				block_slice_size.z = block_slice_size_f
+				if (delta > 0) {
+					block_slice_position.z =
+						current_position + (current_size * 0.5) - block_slice_size_f * 0.5
+				} else {
+					block_slice_position.z =
+						current_position - (current_size * 0.5) + block_slice_size_f * 0.5
+				}
+			}
+
+			append_elem(
+				&game.falling_blocks,
+				CreateFallingBlock(block_slice_position, block_slice_size, current.color),
+			)
+		}
 	}
 
 	append(&game.placed_blocks, current)
@@ -255,7 +317,6 @@ UpdateGameState :: proc(game: ^Game) {
 			// game.current_block = CreateMovingBlock(game^)
 		}
 	}
-
 }
 
 UpdateCameraPosition :: proc(game: Game, camera: ^rl.Camera3D) {
