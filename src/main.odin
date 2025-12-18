@@ -245,15 +245,19 @@ UpdateGameState :: proc(game: ^Game) {
 		}
 	case .GAME_OVER_STATE:
 		if input_pressed {
-			game.state = .GAME_RESET_STATE
-			game.animations.overlay.overlay_fade_state = .FADE_OUT
 			game.placed_blocks = {}
 			InitGame(game)
+			game.state = .GAME_PLAYING_STATE
+			game.current_block = CreateMovingBlock(game^)
+			game.animations.overlay.overlay_type = .OVERLAY_GAME_OVER
+			game.animations.overlay.overlay_fade_state = .FADE_OUT
+			game.animations.overlay.alpha = 1
+			game.animations.overlay.offset_y = 0
 		}
 	case .GAME_RESET_STATE:
 		if len(game.placed_blocks) == 1 {
 			// Reset Game
-			game.current_block = CreateMovingBlock(game^)
+			// game.current_block = CreateMovingBlock(game^)
 		}
 	}
 
