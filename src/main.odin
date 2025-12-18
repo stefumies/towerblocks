@@ -311,10 +311,13 @@ DrawGameStartOverlay :: proc(game: Game) {
 }
 
 DrawGameScore :: proc(game: Game) {
+	if game.state != GameState.GAME_PLAYING {
+		return
+	}
 	font_size := 120 * game.animations.score.scale
 	score := len(game.placed_blocks) - 1
 	title := fmt.ctprintf("%z", score)
-	DrawOverlay(game, title, "", font_size, font_size - 4, 100, 120)
+	DrawOverlay(game, title, "", i32(font_size), i32(font_size) - 4, 160, 180)
 }
 
 DrawGameOverOverlay :: proc(game: Game) {
