@@ -109,7 +109,7 @@ CreateMovingBlock :: proc(game: Game) -> Block {
     }
 }
 
-PlaceCurrentBlock :: proc(game: ^Game) {
+PlaceCurrentBlock :: proc(game: ^Game) -> bool{
 
 	current := game.current_block
 	target := game.previous_block
@@ -125,8 +125,7 @@ PlaceCurrentBlock :: proc(game: ^Game) {
 	overlay := target_size - abs(delta)
 
 	if overlay < 0.1 {
-		// Game over
-		return
+		return false
 	}
 
 	if is_x_axis {
@@ -140,6 +139,8 @@ PlaceCurrentBlock :: proc(game: ^Game) {
 	append(&game.placed_blocks, current)
 	new_len := len(game.placed_blocks)
 	game.previous_block = &game.placed_blocks[new_len - 1]
+
+    return true
 }
 
 UpdateGameState :: proc(game: ^Game) {
@@ -153,11 +154,19 @@ UpdateGameState :: proc(game: ^Game) {
 		}
 	case .GAME_PLAYING:
 		if input_pressed {
-			PlaceCurrentBlock(game)
-			game.current_block = CreateMovingBlock(game^)
+            if PlaceCurrentBlock(game) {
+                game.current_block = CreateMovingBlock(game^)
+            } else {
+                game.state = GameState.GAME_OVER
+            }
 		}
 	case .GAME_OVER:
-		break
+        if input_pressed {
+            game.placed_blocks = {}
+            InitGame(game)
+            game.state = .GAME_PLAYING
+            game.current_block = CreateMovingBlock(game^)
+        }
 	}
 }
 
@@ -213,7 +222,7 @@ DrawGameScore :: proc(game: Game) {
 }
 
 DrawGameOverOverlay :: proc(game: Game) {
-	DrawOverlay(game, "GAME OVER", GameState.GAME_OVER)
+	DrawOverlay(game, "GAME OVER\n", GameState.GAME_OVER)
 }
 
 Draw :: proc(game: Game) {
