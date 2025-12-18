@@ -25,11 +25,12 @@ BlockMovement :: struct {
 }
 
 Block :: struct {
-	index:    i32,
-	position: rl.Vector3,
-	size:     rl.Vector3,
-	color:    rl.Color,
-	movement: BlockMovement,
+	index:        i32,
+	position:     rl.Vector3,
+	size:         rl.Vector3,
+	color:        rl.Color,
+	color_offset: i32,
+	movement:     BlockMovement,
 }
 
 GameState :: enum {
@@ -50,16 +51,23 @@ Game :: struct {
 }
 
 default_block: Block = {
-    0,
+	0,
 	{0, 0, 0},
 	{10, 2, 10},
-	rl.Color{150, 150, 150, 255},
+    rl.Color {},
+	rl.GetRandomValue(0, 100),
 	{0, .FORWARD, .X_AXIS},
 }
 
 InitGame :: proc(game: ^Game) {
 	game.state = .GAME_READY
 	block: Block = default_block
+    block.color = rl.Color {
+        CalculateBlockColor(block.color_offset, 0),
+        CalculateBlockColor(block.color_offset, 2),
+        CalculateBlockColor(block.color_offset, 4),
+        255
+    }
 	game.current_block = default_block
 	append_elem(&game.placed_blocks, block)
 	game.previous_block = &game.placed_blocks[0]
@@ -83,6 +91,10 @@ DrawCurrentBlock :: proc(game: Game) {
 	DrawBlock(game.current_block)
 }
 
+CalculateBlockColor :: proc(offset: i32, phase: f32) -> u8{
+    return u8(m.sin_f32(0.3 * f32(offset) + phase) * 55 + 200)
+}
+
 CreateMovingBlock :: proc(game: Game) -> Block {
 	target: ^Block = game.previous_block
 	block_axis := target.movement.axis == BlockAxis.X_AXIS ? BlockAxis.Z_AXIS : BlockAxis.X_AXIS
@@ -98,18 +110,23 @@ CreateMovingBlock :: proc(game: Game) -> Block {
 		block_position.z =
 			(block_direction == BlockDirection.FORWARD ? -1 : 1) * BLOCK_MOVE_THRESHOLD
 	}
-    block_index := target.index + 1
-    block_speed := 12 + f32(block_index) * 0.5
+	block_index := target.index + 1
+	block_speed := 12 + f32(block_index) * 0.5
+	color_offset := target.color_offset + block_index
+	block_color_r := CalculateBlockColor(color_offset, 0)
+    block_color_g := CalculateBlockColor(color_offset, 2)
+    block_color_b := CalculateBlockColor(color_offset, 4)
 	return {
-        block_index,
-        block_position,
-        target.size,
-        target.color,
-        BlockMovement{block_speed, block_direction, block_axis}
-    }
+		block_index,
+		block_position,
+		target.size,
+		rl.Color{u8(block_color_r), u8(block_color_g), u8(block_color_b), 255},
+		target.color_offset,
+		BlockMovement{block_speed, block_direction, block_axis},
+	}
 }
 
-PlaceCurrentBlock :: proc(game: ^Game) -> bool{
+PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 
 	current := game.current_block
 	target := game.previous_block
@@ -140,7 +157,7 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool{
 	new_len := len(game.placed_blocks)
 	game.previous_block = &game.placed_blocks[new_len - 1]
 
-    return true
+	return true
 }
 
 UpdateGameState :: proc(game: ^Game) {
@@ -154,19 +171,19 @@ UpdateGameState :: proc(game: ^Game) {
 		}
 	case .GAME_PLAYING:
 		if input_pressed {
-            if PlaceCurrentBlock(game) {
-                game.current_block = CreateMovingBlock(game^)
-            } else {
-                game.state = GameState.GAME_OVER
-            }
+			if PlaceCurrentBlock(game) {
+				game.current_block = CreateMovingBlock(game^)
+			} else {
+				game.state = GameState.GAME_OVER
+			}
 		}
 	case .GAME_OVER:
-        if input_pressed {
-            game.placed_blocks = {}
-            InitGame(game)
-            game.state = .GAME_PLAYING
-            game.current_block = CreateMovingBlock(game^)
-        }
+		if input_pressed {
+			game.placed_blocks = {}
+			InitGame(game)
+			game.state = .GAME_PLAYING
+			game.current_block = CreateMovingBlock(game^)
+		}
 	}
 }
 
@@ -223,6 +240,7 @@ DrawGameScore :: proc(game: Game) {
 
 DrawGameOverOverlay :: proc(game: Game) {
 	DrawOverlay(game, "GAME OVER\n", GameState.GAME_OVER)
+	DrawOverlay(game, "Press space to play again\n", GameState.GAME_OVER)
 }
 
 Draw :: proc(game: Game) {
