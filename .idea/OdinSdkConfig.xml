@@ -5,7 +5,7 @@
     <option name="semanticAnnotatorEnabled" value="true" />
     <option name="odinCheckerEnabled" value="true" />
     <option name="highlightUnknownReferencesEnabled" value="false" />
-    <option name="conditionalSymbolResolutionEnabled" value="false" />
+    <option name="conditionalSymbolResolutionEnabled" value="true" />
     <option name="cacheEnabled" value="true" />
     <option name="useBuiltinFormatter" value="false" />
     <option name="odinFmtPath" value="C:\Tools\ols\odinfmt.exe" />

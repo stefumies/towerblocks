@@ -87,6 +87,13 @@ CreateMovingBlock :: proc(game: Game) -> Block {
     block_direction :=  rl.GetRandomValue(0,1) == 0 ? BlockDirection.FORWARD : BlockDirection.BACKWARD
 	block_position := target.position
 	block_position.y += target.size.y
+
+    if block_axis == BlockAxis.X_AXIS {
+        block_position.x = (block_direction == BlockDirection.FORWARD ? -1 : 1) * BLOCK_MOVE_THRESHOLD
+    } else {
+        block_position.z = (block_direction == BlockDirection.FORWARD ? -1 : 1) * BLOCK_MOVE_THRESHOLD
+    }
+
 	return {
 		block_position,
 		target.size,

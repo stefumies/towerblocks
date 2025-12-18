@@ -6,5 +6,6 @@
       <sourceFolder url="file://$MODULE_DIR$/src" type="OdinSourceRootType" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Odin SDK" level="project" />
   </component>
 </module>
