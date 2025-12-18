@@ -138,6 +138,10 @@ DrawCurrentBlock :: proc(game: Game) {
 	DrawBlock(game.current_block)
 }
 
+DrawFallingBlocks :: proc(game: Game) {
+
+}
+
 CalculateBlockColor :: proc(offset: i32, phase: f32) -> u8 {
 	return u8(m.sin_f32(0.3 * f32(offset) + phase) * 55 + 200)
 }
@@ -386,6 +390,7 @@ Update :: proc(game: ^Game, camera: ^rl.Camera3D, dt: f32) {
 Draw3D :: proc(game: Game) {
 	DrawPlacedBlocks(game)
 	DrawCurrentBlock(game)
+	DrawFallingBlocks(game)
 }
 
 DrawOverlay :: proc(
