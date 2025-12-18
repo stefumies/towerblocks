@@ -37,11 +37,15 @@ GameState :: enum {
 	GAME_OVER,
 }
 
+GameAnimations :: struct {}
+
+
 Game :: struct {
 	state:          GameState,
 	placed_blocks:  [dynamic]Block,
 	previous_block: ^Block,
 	current_block:  Block,
+    animations: GameAnimations
 }
 
 default_block: Block = {
@@ -92,7 +96,36 @@ CreateMovingBlock :: proc(game: Game) -> Block {
 }
 
 PlaceCurrentBlock :: proc(game: ^Game) {
-    
+
+    current:= game.current_block
+    target:= game.previous_block
+    is_x_axis := current.movement.axis == BlockAxis.X_AXIS
+
+    current_position := is_x_axis ? current.position.x : current.position.z
+    target_position := is_x_axis ? target.position.x : target.position.z
+
+    current_size := is_x_axis ? current.size.x  : current.size.z
+    target_size := is_x_axis ? target.size.x  : target.size.z
+
+    delta := current_position - target_position
+    overlay := target_size - abs(delta)
+
+    if overlay < 0.1 {
+        // Game over
+        return;
+    }
+
+    if is_x_axis{
+        current.size.x = overlay
+        current.position.x = target_position + delta / 2
+    } else {
+        current.size.z = overlay
+        current.position.z = target_position + delta / 2
+    }
+
+    append(&game.placed_blocks, current)
+    new_len := len(game.placed_blocks)
+    game.previous_block = &game.placed_blocks[new_len -1]
 }
 
 UpdateGameState :: proc(game: ^Game) {
