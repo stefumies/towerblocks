@@ -4,7 +4,7 @@
     <option name="sdkPath" value="$PROJECT_DIR$/../../../../../Odin" />
     <option name="semanticAnnotatorEnabled" value="true" />
     <option name="odinCheckerEnabled" value="true" />
-    <option name="highlightUnknownReferencesEnabled" value="false" />
+    <option name="highlightUnknownReferencesEnabled" value="true" />
     <option name="conditionalSymbolResolutionEnabled" value="true" />
     <option name="cacheEnabled" value="true" />
     <option name="useBuiltinFormatter" value="false" />

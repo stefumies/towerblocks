@@ -10,6 +10,7 @@ BG_COLOR :: rl.Color{210, 200, 190, 255}
 BLOCK_MOVE_THRESHOLD :: 12
 SCORE_ANIMATION_DURATION :: 0.2
 SCORE_ANIMATION_SCALE :: 1.5
+OVERLAY_ANIMATION_OFFSET_Y :: -50
 
 BlockDirection :: enum {
 	FORWARD,
@@ -47,8 +48,27 @@ GameScoreAnimation :: struct {
 	duration: f32,
 }
 
+GameOverlayFadeState :: enum {
+	FADE_IN,
+	FADE_OUT,
+	NO_FADE,
+}
+
+GameOverlayType :: enum {
+	GAME_START,
+	GAME_OVER,
+}
+
+GameOverlayAnimation :: struct {
+	overlay_type:       GameOverlayType,
+	overlay_fade_state: GameOverlayFadeState,
+	alpha:              f32,
+	offset_y:           f32,
+}
+
 GameAnimations :: struct {
-	score: GameScoreAnimation,
+	score:   GameScoreAnimation,
+	overlay: GameOverlayAnimation,
 }
 
 
@@ -81,6 +101,12 @@ InitGame :: proc(game: ^Game) {
 	game.current_block = default_block
 	game.animations = {
 		score = {duration = 0, scale = 1},
+		overlay = {
+			overlay_type = GameOverlayType.GAME_START,
+			overlay_fade_state = GameOverlayFadeState.FADE_IN,
+			alpha = 0,
+			offset_y = OVERLAY_ANIMATION_OFFSET_Y,
+		},
 	}
 	append_elem(&game.placed_blocks, block)
 	game.previous_block = &game.placed_blocks[0]
@@ -180,8 +206,8 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 	append(&game.placed_blocks, current)
 	new_len := len(game.placed_blocks)
 	game.previous_block = &game.placed_blocks[new_len - 1]
-    game.animations.score.duration =  SCORE_ANIMATION_DURATION
-    game.animations.score.scale = SCORE_ANIMATION_SCALE
+	game.animations.score.duration = SCORE_ANIMATION_DURATION
+	game.animations.score.scale = SCORE_ANIMATION_SCALE
 
 	return true
 }
@@ -236,23 +262,23 @@ UpdateCurrentBlock :: proc(game: ^Game, dt: f32) {
 }
 
 UpdateScore :: proc(game: ^Game, dt: f32) {
-    animation := &game.animations.score
-    if animation.duration > 0 {
-        animation.duration -= dt
-        t :=  1 - animation.duration / SCORE_ANIMATION_DURATION
-        animation.scale = rl.Lerp(SCORE_ANIMATION_SCALE, 1.0, t)
-        if animation.duration <= 0 {
-            animation.duration = 0
-            animation.scale = 1
-        }
-    }
+	animation := &game.animations.score
+	if animation.duration > 0 {
+		animation.duration -= dt
+		t := 1 - animation.duration / SCORE_ANIMATION_DURATION
+		animation.scale = rl.Lerp(SCORE_ANIMATION_SCALE, 1.0, t)
+		if animation.duration <= 0 {
+			animation.duration = 0
+			animation.scale = 1
+		}
+	}
 }
 
 Update :: proc(game: ^Game, camera: ^rl.Camera3D, dt: f32) {
 	UpdateGameState(game)
 	UpdateCameraPosition(game^, camera)
 	UpdateCurrentBlock(game, dt)
-    UpdateScore(game, dt)
+	UpdateScore(game, dt)
 }
 
 Draw3D :: proc(game: Game) {
@@ -260,30 +286,42 @@ Draw3D :: proc(game: Game) {
 	DrawCurrentBlock(game)
 }
 
-DrawOverlay :: proc(game: Game, title: cstring, pos_y: i32, fnts: i32, gstate: GameState) {
-	if game.state != gstate {
-		return
-	}
-	font_size := fnts
+DrawOverlay :: proc(
+	game: Game,
+	title: cstring,
+	subtitle: cstring,
+	title_size: i32,
+	subtitle_size: i32,
+	title_y: i32,
+	subtitle_y: i32,
+) {
 	screen_width := rl.GetScreenWidth()
-	text_size := rl.MeasureText(title, font_size)
-	pos_x := i32(screen_width - text_size) / 2
-	rl.DrawText(title, pos_x, pos_y, font_size, rl.DARKGRAY)
+	title_width := rl.MeasureText(title, title_size)
+	subtitle_width := rl.MeasureText(subtitle, subtitle_size)
+	rl.DrawText(title, (screen_width - title_width) / 2, title_y, title_size, rl.DARKGRAY)
+	rl.DrawText(subtitle, (screen_width - subtitle_width) / 2, subtitle_y, subtitle_size, rl.GRAY)
 }
 
 DrawGameStartOverlay :: proc(game: Game) {
-	DrawOverlay(game, "START GAME", 50, 60, GameState.GAME_READY)
+	if game.state != GameState.GAME_READY {
+		return
+	}
+	DrawOverlay(game, "START GAME", "Click or Press <space> to start", 60, 30, 100, 170)
+
 }
 
 DrawGameScore :: proc(game: Game) {
-    font_size := 120 * game.animations.score.scale
+	font_size := 120 * game.animations.score.scale
 	score := len(game.placed_blocks) - 1
 	title := fmt.ctprintf("%z", score)
-	DrawOverlay(game, title, 200, i32(font_size), GameState.GAME_PLAYING)
+	DrawOverlay(game, title, "", font_size, font_size - 4, 100, 120)
 }
 
 DrawGameOverOverlay :: proc(game: Game) {
-	DrawOverlay(game, "GAME OVER", 50, 60, GameState.GAME_OVER)
+	if game.state != GameState.GAME_OVER {
+		return
+	}
+	DrawOverlay(game, "START OVER", "Click or Press <space> to play again", 60, 30, 100, 170)
 }
 
 Draw :: proc(game: Game) {
