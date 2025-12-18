@@ -12,6 +12,7 @@ SCORE_ANIMATION_DURATION :: 0.2
 SCORE_ANIMATION_SCALE :: 1.5
 OVERLAY_ANIMATION_OFFSET_Y :: -50
 OVERLAY_AIMATION_FADE_SPEED :: 2.5
+CAMERA_SPEED :: 0.1
 
 BlockDirection :: enum {
 	FORWARD,
@@ -86,7 +87,7 @@ default_block: Block = {
 	0,
 	{0, 0, 0},
 	{10, 2, 10},
-	rl.Color{},
+	rl.Color{100, 100, 100, 255},
 	rl.GetRandomValue(0, 100),
 	{0, .FORWARD, .X_AXIS},
 }
@@ -94,12 +95,6 @@ default_block: Block = {
 InitGame :: proc(game: ^Game) {
 	game.state = .GAME_READY_STATE
 	block: Block = default_block
-	block.color = rl.Color {
-		CalculateBlockColor(block.color_offset, 0),
-		CalculateBlockColor(block.color_offset, 2),
-		CalculateBlockColor(block.color_offset, 4),
-		255,
-	}
 	game.current_block = default_block
 	game.animations = {
 		score = {duration = 0, scale = 1},
@@ -264,9 +259,9 @@ UpdateGameState :: proc(game: ^Game) {
 }
 
 UpdateCameraPosition :: proc(game: Game, camera: ^rl.Camera3D) {
-	blocks_len := f32(2 * len(game.placed_blocks))
-	camera.position.y = 50.0 + blocks_len
-	camera.target.y = blocks_len
+	blocks_len := len(game.placed_blocks)
+	camera.position.y = rl.Lerp(camera.position.y, f32(50 + 2 * blocks_len), CAMERA_SPEED)
+	camera.target.y = rl.Lerp(camera.target.y, f32(2 * blocks_len), CAMERA_SPEED)
 }
 
 UpdateCurrentBlock :: proc(game: ^Game, dt: f32) {
