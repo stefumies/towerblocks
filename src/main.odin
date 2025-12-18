@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import m "core:math"
 import rl "vendor:raylib"
 
@@ -7,6 +8,8 @@ WINDOW_WIDTH :: 600
 WINDOW_HEIGHT :: 1000
 BG_COLOR :: rl.Color{210, 200, 190, 255}
 BLOCK_MOVE_THRESHOLD :: 12
+SCORE_ANIMATION_DURATION :: 0.5
+SCORE_ANIMATION_SCALE :: 1.5
 
 BlockDirection :: enum {
 	FORWARD,
@@ -39,7 +42,14 @@ GameState :: enum {
 	GAME_OVER,
 }
 
-GameAnimations :: struct {}
+GameScoreAnimation :: struct {
+	scale:    f32,
+	duration: f32,
+}
+
+GameAnimations :: struct {
+	score: GameScoreAnimation,
+}
 
 
 Game :: struct {
@@ -69,6 +79,9 @@ InitGame :: proc(game: ^Game) {
 		255,
 	}
 	game.current_block = default_block
+	game.animations = {
+		score = {duration = 0, scale = 1},
+	}
 	append_elem(&game.placed_blocks, block)
 	game.previous_block = &game.placed_blocks[0]
 }
@@ -139,14 +152,14 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 	target_size := is_x_axis ? target.size.x : target.size.z
 
 	delta := current_position - target_position
-	overlay := target_size - m.abs(delta)
-	is_perfect_overlay := m.abs(delta) < 0.3
+	overlap := target_size - m.abs(delta)
+	is_perfect_overlap := m.abs(delta) < 0.3
 
-	if overlay < 0.1 {
+	if overlap < 0.1 {
 		return false
 	}
 
-	if is_perfect_overlay {
+	if is_perfect_overlap {
 		if is_x_axis {
 			current.size.x = target.size.x
 			current.position.x = target.position.x
@@ -156,10 +169,10 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 		}
 	} else {
 		if is_x_axis {
-			current.size.x = overlay
+			current.size.x = overlap
 			current.position.x = target_position + delta / 2
 		} else {
-			current.size.z = overlay
+			current.size.z = overlap
 			current.position.z = target_position + delta / 2
 		}
 	}
@@ -167,6 +180,8 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 	append(&game.placed_blocks, current)
 	new_len := len(game.placed_blocks)
 	game.previous_block = &game.placed_blocks[new_len - 1]
+    game.animations.score.duration =  SCORE_ANIMATION_DURATION
+    game.animations.score.scale = SCORE_ANIMATION_SCALE
 
 	return true
 }
@@ -220,10 +235,24 @@ UpdateCurrentBlock :: proc(game: ^Game, dt: f32) {
 	}
 }
 
+UpdateScore :: proc(game: ^Game, dt: f32) {
+    animation := &game.animations.score
+    if animation.duration > 0 {
+        animation.duration -= dt
+        t :=  1 - animation.duration / SCORE_ANIMATION_DURATION
+        animation.scale = rl.Lerp(SCORE_ANIMATION_SCALE, 1.0, t)
+        if animation.duration <= 0 {
+            animation.duration = 0
+            animation.scale = 1
+        }
+    }
+}
+
 Update :: proc(game: ^Game, camera: ^rl.Camera3D, dt: f32) {
 	UpdateGameState(game)
 	UpdateCameraPosition(game^, camera)
 	UpdateCurrentBlock(game, dt)
+    UpdateScore(game, dt)
 }
 
 Draw3D :: proc(game: Game) {
@@ -231,27 +260,30 @@ Draw3D :: proc(game: Game) {
 	DrawCurrentBlock(game)
 }
 
-DrawOverlay :: proc(game: Game, title: cstring, gstate: GameState) {
+DrawOverlay :: proc(game: Game, title: cstring, pos_y: i32, fnts: i32, gstate: GameState) {
 	if game.state != gstate {
 		return
 	}
-	font_size: i32 = 60
+	font_size := fnts
 	screen_width := rl.GetScreenWidth()
 	text_size := rl.MeasureText(title, font_size)
-	position := i32(screen_width - text_size) / 2
-	rl.DrawText(title, position, 50, font_size, rl.DARKGRAY)
+	pos_x := i32(screen_width - text_size) / 2
+	rl.DrawText(title, pos_x, pos_y, font_size, rl.DARKGRAY)
 }
 
 DrawGameStartOverlay :: proc(game: Game) {
-	DrawOverlay(game, "START_GAME", GameState.GAME_READY)
+	DrawOverlay(game, "START GAME", 50, 60, GameState.GAME_READY)
 }
 
 DrawGameScore :: proc(game: Game) {
-	DrawOverlay(game, "100", GameState.GAME_PLAYING)
+    font_size := 120 * game.animations.score.scale
+	score := len(game.placed_blocks) - 1
+	title := fmt.ctprintf("%z", score)
+	DrawOverlay(game, title, 200, i32(font_size), GameState.GAME_PLAYING)
 }
 
 DrawGameOverOverlay :: proc(game: Game) {
-	DrawOverlay(game, "GAME OVER\n", GameState.GAME_OVER)
+	DrawOverlay(game, "GAME OVER", 50, 60, GameState.GAME_OVER)
 }
 
 Draw :: proc(game: Game) {
