@@ -54,7 +54,7 @@ default_block: Block = {
 	0,
 	{0, 0, 0},
 	{10, 2, 10},
-    rl.Color {},
+	rl.Color{},
 	rl.GetRandomValue(0, 100),
 	{0, .FORWARD, .X_AXIS},
 }
@@ -62,12 +62,12 @@ default_block: Block = {
 InitGame :: proc(game: ^Game) {
 	game.state = .GAME_READY
 	block: Block = default_block
-    block.color = rl.Color {
-        CalculateBlockColor(block.color_offset, 0),
-        CalculateBlockColor(block.color_offset, 2),
-        CalculateBlockColor(block.color_offset, 4),
-        255
-    }
+	block.color = rl.Color {
+		CalculateBlockColor(block.color_offset, 0),
+		CalculateBlockColor(block.color_offset, 2),
+		CalculateBlockColor(block.color_offset, 4),
+		255,
+	}
 	game.current_block = default_block
 	append_elem(&game.placed_blocks, block)
 	game.previous_block = &game.placed_blocks[0]
@@ -91,8 +91,8 @@ DrawCurrentBlock :: proc(game: Game) {
 	DrawBlock(game.current_block)
 }
 
-CalculateBlockColor :: proc(offset: i32, phase: f32) -> u8{
-    return u8(m.sin_f32(0.3 * f32(offset) + phase) * 55 + 200)
+CalculateBlockColor :: proc(offset: i32, phase: f32) -> u8 {
+	return u8(m.sin_f32(0.3 * f32(offset) + phase) * 55 + 200)
 }
 
 CreateMovingBlock :: proc(game: Game) -> Block {
@@ -114,8 +114,8 @@ CreateMovingBlock :: proc(game: Game) -> Block {
 	block_speed := 12 + f32(block_index) * 0.5
 	color_offset := target.color_offset + block_index
 	block_color_r := CalculateBlockColor(color_offset, 0)
-    block_color_g := CalculateBlockColor(color_offset, 2)
-    block_color_b := CalculateBlockColor(color_offset, 4)
+	block_color_g := CalculateBlockColor(color_offset, 2)
+	block_color_b := CalculateBlockColor(color_offset, 4)
 	return {
 		block_index,
 		block_position,
@@ -139,18 +139,29 @@ PlaceCurrentBlock :: proc(game: ^Game) -> bool {
 	target_size := is_x_axis ? target.size.x : target.size.z
 
 	delta := current_position - target_position
-	overlay := target_size - abs(delta)
+	overlay := target_size - m.abs(delta)
+	is_perfect_overlay := m.abs(delta) < 0.3
 
 	if overlay < 0.1 {
 		return false
 	}
 
-	if is_x_axis {
-		current.size.x = overlay
-		current.position.x = target_position + delta / 2
+	if is_perfect_overlay {
+		if is_x_axis {
+			current.size.x = target.size.x
+			current.position.x = target.position.x
+		} else {
+			current.size.z = target.size.z
+			current.position.z = target.position.z
+		}
 	} else {
-		current.size.z = overlay
-		current.position.z = target_position + delta / 2
+		if is_x_axis {
+			current.size.x = overlay
+			current.position.x = target_position + delta / 2
+		} else {
+			current.size.z = overlay
+			current.position.z = target_position + delta / 2
+		}
 	}
 
 	append(&game.placed_blocks, current)
@@ -234,13 +245,13 @@ DrawOverlay :: proc(game: Game, title: cstring, gstate: GameState) {
 DrawGameStartOverlay :: proc(game: Game) {
 	DrawOverlay(game, "START_GAME", GameState.GAME_READY)
 }
+
 DrawGameScore :: proc(game: Game) {
 	DrawOverlay(game, "100", GameState.GAME_PLAYING)
 }
 
 DrawGameOverOverlay :: proc(game: Game) {
 	DrawOverlay(game, "GAME OVER\n", GameState.GAME_OVER)
-	DrawOverlay(game, "Press space to play again\n", GameState.GAME_OVER)
 }
 
 Draw :: proc(game: Game) {
